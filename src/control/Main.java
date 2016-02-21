@@ -1,5 +1,7 @@
 package control;
 
+import java.util.Random;
+
 import model.DummyLocalizer;
 import model.RealLocalizer;
 import view.RobotLocalizationViewer;
@@ -11,6 +13,15 @@ public class Main {
 	 */
 	
 	public static void main( String[] args) {
+		
+//		Random rand = new Random();
+//		
+//		for(int i =0; i < 10000; i++){
+//			double value = rand.nextDouble();
+//			System.out.println(value);
+//		}
+//		System.out.println("klar");
+//		return;
 		
 		/*
 		 * generate you own localiser / estimator wrapper here to plug it into the 

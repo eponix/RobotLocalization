@@ -147,10 +147,10 @@ public class RobotLocalizationViewer {
 		int[] start = loc.getCurrentTruePosition();
 		
 		updateViewer( start[0], start[1], -1, -1);
-		initFlag = true;
 		if( initFlag){
 			System.out.println( "The viewer was already initialized, no changes");
 		}
+		initFlag = true;
 	}
 
 	public synchronized void updateOneStep( ){		

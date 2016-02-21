@@ -7,18 +7,30 @@ import control.EstimatorInterface;
 public class RealLocalizer implements EstimatorInterface {
 
 	private int rows, cols, head;
-	private int realX, realY;
+	private int realX, realY, realH;
 	private double[][] state;
+	private Random rand;
+	private int[] latestReading;
+	private double[] currentMaxProbPos;
 
 	public RealLocalizer( int rows, int cols, int head) {
 		this.rows = rows;
 		this.cols = cols;
 		this.head = head;
-		Random rand = new Random();
+		rand = new Random();
 		
 		realX = rand.nextInt(rows);
 		realY = rand.nextInt(cols);
+		realH = rand.nextInt(4);
 		state = new double[rows][cols];
+		latestReading = new int[2];
+		currentMaxProbPos = new double[3];
+		
+		for(int i = 0; i < rows; i++){
+			for(int j = 0; j < cols; j++){
+				state[i][j] = 1.0/(cols * rows);
+			}
+		}
 	}	
 
 	public int getNumRows() {
@@ -66,7 +78,6 @@ public class RealLocalizer implements EstimatorInterface {
 		}else{
 			return 1.0/counter;
 		}
-		System.out.println("counter: " + counter);
 		
 		return (0.3/counter);
 	}
@@ -79,20 +90,13 @@ public class RealLocalizer implements EstimatorInterface {
 		return ((nY == 0 && nH == 3) || (nY == cols -1 && nH == 1) || (nX == 0 && nH == 0) || (nX == rows -1 && nH == 2));
 	}
 
+		// returns the probability when robot is in cyanX,cyanY that we actually are in x,y
 	public double getOrXY(int cyanX, int cyanY, int x, int y) {
 		if(cyanX == x && cyanY == y){
 			return 0.1;
 		}
 		
 		if(Math.abs(cyanX-x) <= 1 && Math.abs(y-cyanY) <= 1){
-//			int counter = 0;
-//			for(int i = cyanY-1; i <= cyanY+1; i++){
-//				for(int j = cyanX; j <= cyanX+1; j++){
-//					if(isWall(j, x)){
-//						counter++;
-//					}
-//				}
-//			}
 			return 0.05;
 		}
 		
@@ -100,7 +104,16 @@ public class RealLocalizer implements EstimatorInterface {
 			return 0.025;
 		}
 		
-		return 0.1;
+		int counter = 0;
+		for(int i = 0; i < rows; i++){
+			for(int j = 0; j < cols; j++){
+				if(Math.abs(cyanX-i) > 2 || Math.abs(j-cyanY) > 2){
+					counter++;
+				}
+			}
+		}
+		
+		return 0.1/counter;
 	}
 
 
@@ -112,9 +125,11 @@ public class RealLocalizer implements EstimatorInterface {
 
 	}
 
-	public int[] getCurrentReading() { // TO DO
-		int[] ret = null;
-		return ret;
+	public int[] getCurrentReading() {
+		if(latestReading[0] == Integer.MAX_VALUE || latestReading[1] == Integer.MAX_VALUE){
+			return null;
+		}
+		return latestReading;
 	}
 
 
@@ -122,9 +137,114 @@ public class RealLocalizer implements EstimatorInterface {
 		return state[x][y];	
 	}
 
-	public void update() { // vi ska ändra posistion på vår real robot, använd föregående state+sensor för att uppdatera vår state.
+	public void update() { // använd föregående state+sensor för att uppdatera vår state.
 		// kan vi använda getOrXY för att göra något.
-		System.out.println("Nothing is happening, no model to go for...");
+		move(); // ändrar truePosition
+		generateReadings();
+		updateState();
+	}
+	
+	private void generateReadings(){
+		int randomValue = rand.nextInt(10);
+		
+		if(randomValue < 1){
+			latestReading = getCurrentTruePosition();
+		}else if(randomValue < 5){
+			int randomStep = rand.nextInt(8);
+			switch(randomStep){
+			case 0: latestReading[0] = realX-1;
+					latestReading[1] = realY-1;
+					break;
+			case 1: latestReading[0] = realX-1;
+					latestReading[1] = realY;
+					break;
+			case 2: latestReading[0] = realX-1;
+					latestReading[1] = realY+1;
+					break;
+			case 3: latestReading[0] = realX;
+					latestReading[1] = realY-1;
+					break;
+			case 4: latestReading[0] = realX;
+					latestReading[1] = realY+1;
+					break;
+			case 5: latestReading[0] = realX+1;
+					latestReading[1] = realY-1;
+					break;
+			case 6: latestReading[0] = realX+1;
+					latestReading[1] = realY;
+					break;
+			case 7: latestReading[0] = realX+1;
+					latestReading[1] = realY+1;
+					break;
+			}
+		}else if(randomValue < 9){
+			int valueX, valueY;
+			valueX = rand.nextInt(5) -2;
+			if(Math.abs(valueX) <= 1){
+				valueY = rand.nextInt(3) -1;
+			}else{
+				valueY = rand.nextInt(5) -2;
+			}
+			latestReading[0] = valueX;
+			latestReading[1] = valueY;
+		}else{
+			latestReading[0] = Integer.MAX_VALUE;
+			latestReading[1] = Integer.MAX_VALUE;
+		}
+		
+		if(isWall(latestReading[0], latestReading[1])){
+			latestReading[0] = Integer.MAX_VALUE;
+			latestReading[1] = Integer.MAX_VALUE;
+		}	
+	}
+	
+	private void move(){
+		double moveDouble = rand.nextDouble();
+		double counter = 0;
+		for(int i = 0; i < rows; i++){
+			for(int j = 0; j < cols; j++){
+				for(int k = 0; k < 4; k++){
+					double tProb = getTProb(realX, realY, realH, i, j, k);
+					if(tProb != 0.0){
+						System.out.println("realX: " + realX + " realY: " + realY + " realH: " + realH);
+						System.out.println("prob: " + tProb + " x: " + i + " y: " + j + " h: " + k + " moveDoble " + moveDouble + " counter: " + counter );
+						counter += tProb;
+						if(moveDouble < counter){
+							realX = i;
+							realY = j;
+							realH = k;
+							return;
+						}
+					}
+				}
+				
+			}
+		}
+	}
+	
+	private void updateState(){
+		double probSum = 0;
+		if(latestReading[0] == Integer.MAX_VALUE || latestReading[1] == Integer.MAX_VALUE){
+			return;
+		}		
+		
+		for(int i = 0; i < rows; i++){
+			for(int j = 0; j < cols; j++){
+				state[i][j] += getOrXY(latestReading[0], latestReading[1], i, j);
+				if(runt currentMaxProbPos[0] och currentMaxProbPos[1] )
+					state[i][j] += getOrXY(latestReading[0], latestReading[1], i, j);
+				probSum += state[i][j];
+			}
+		}
+		for(int i = 0; i < rows; i++){
+			for(int j = 0; j < cols; j++){
+				state[i][j] /= probSum;
+				if(state[i][j] > currentMaxProbPos[2] )
+					currentMaxProbPos[0] = i;
+					currentMaxProbPos[1] = j;
+					currentMaxProbPos[2] = state[i][j];
+			}
+		}
 	}
 
 
