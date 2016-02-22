@@ -1,18 +1,17 @@
 package model;
 
 import java.util.Random;
-
 import control.EstimatorInterface;
 
 public class RealLocalizer implements EstimatorInterface {
 
 	private int rows, cols, head;
 	private int realX, realY, realH;
-	private double[][] state;
+	private double[][] showableGrid;
 	private Random rand;
 	private int[] latestReading;
 	private double[] currentMaxProbPos;
-	private double[][] sensorState;
+	private double[][][] state;
 	private int rounds=0;
 	private int noReadings=0;
 	private int hit;
@@ -26,14 +25,17 @@ public class RealLocalizer implements EstimatorInterface {
 		realX = rand.nextInt(rows);
 		realY = rand.nextInt(cols);
 		realH = rand.nextInt(4);
-		state = new double[rows][cols];
+		showableGrid = new double[rows][cols];
 		latestReading = new int[2];
 		currentMaxProbPos = new double[3];
-		sensorState = new double[rows][cols];
+		state = new double[rows][cols][4];
 		
 		for(int i = 0; i < rows; i++){
 			for(int j = 0; j < cols; j++){
-				state[i][j] = 1.0/(cols * rows);
+				showableGrid[i][j] = 1.0/(cols * rows);
+				for(int k = 0; k < 4; k++){
+					state[i][j][k] = 1.0/(cols * rows * 4);
+				}
 			}
 		}
 	}	
@@ -49,7 +51,9 @@ public class RealLocalizer implements EstimatorInterface {
 	public int getNumHead() {
 		return head;
 	}
-
+	
+	//return the probability that the robot have/will move to square nX,nY with heading nH
+	//assuming it has the previous position x, y, h
 	public double getTProb( int x, int y, int h, int nX, int nY, int nH) {
 //		return nH; 
 		
@@ -145,7 +149,7 @@ public class RealLocalizer implements EstimatorInterface {
 
 
 	public double getCurrentProb( int x, int y) {
-		return state[x][y];	
+		return showableGrid[x][y];	
 	}
 
 	public void update() { // använd föregående state+sensor för att uppdatera vår state.
@@ -237,45 +241,69 @@ public class RealLocalizer implements EstimatorInterface {
 	
 	private void updateState(){
 		rounds++;
-		double probSum = 0;
+		System.out.println("entered a new round");
+		double normalizingSum = 0;
 		boolean noReading = false;
 		if(latestReading[0] == Integer.MAX_VALUE || latestReading[1] == Integer.MAX_VALUE){
 			noReading = true;
 			noReadings++;
 			System.out.println("NoReading");
 			System.out.println("No reading percentage: " + ((double)noReadings/rounds)* 100 + " %");
-//			return;
+			return;
 		}		
 		
 		for(int i = 0; i < rows; i++){
 			for(int j = 0; j < cols; j++){
 				if(!noReading){
 //					For the current i,j, return the probability for the robot being there
-					double sensorValue = getOrXY(latestReading[0], latestReading[1], i, j);
+					double sensorValue = getOrXY(latestReading[0], latestReading[1], i, j);					
+					double[] headerValues = new double[4];
+					double sum = 0;
+					for(int k = 0; k < 4; k++){
+						headerValues[k] = getHeaderProbability(i,j,k);
+						sum += headerValues[k];
+					}
+					
+					for(int k = 0; k < 4; k++){
+						if(sum == 0 || sensorValue == 0){
+							state[i][j][k] = 0;
+						}else{
+							state[i][j][k] += (sensorValue/sum)*headerValues[k];
+							normalizingSum += state[i][j][k];
+						}
+					}
+					
 //					If the reported sensor value is 0, it's impossible that the robot is in that location;
 //					nullify the state probability that the robot is there
-					if(sensorValue == 0){
-						sensorState[i][j] = sensorValue;
-					}else{
-						sensorState[i][j] += sensorValue;
-					}
+//					if(sensorValue == 0){
+//						state[i][j] = 0;
+//					}else{
+//						state[i][j] += sensorValue;
+//					}
 
 				}
-				state[i][j] = sensorState[i][j];
-				if(isPossibleStep(i, j) && sensorState[i][j] != 0 ){
-					state[i][j] += sensorState[i][j];					
-				}
-				probSum += state[i][j];
+				// Split sensorValue into different headings
 			}
-		}
+		}		
+		// Insert values into the showGrid;
+		// Summarize the heading values from each square and insert into showGrid		
+		// Update currentMaxProbPos
 		currentMaxProbPos[2] = 0;
 		for(int i = 0; i < rows; i++){
 			for(int j = 0; j < cols; j++){
-				state[i][j] /= probSum;
-				if(state[i][j] > currentMaxProbPos[2]){
+				double headerSum = 0;
+				for(int k = 0; k < 4; k++){
+					headerSum += state[i][j][k];
+				}
+				System.out.println("headerSum: " + headerSum);
+				if(normalizingSum == 0){
+					System.out.println("normalizingSum is 0!!");
+				}
+				showableGrid[i][j] = headerSum / normalizingSum;
+				if(showableGrid[i][j] > currentMaxProbPos[2]){
 					currentMaxProbPos[0] = i;
 					currentMaxProbPos[1] = j;
-					currentMaxProbPos[2] = state[i][j];
+					currentMaxProbPos[2] = showableGrid[i][j];
 //					System.out.println("updating maxProb, value: " + currentMaxProbPos[2]);
 				}
 			}
@@ -287,6 +315,19 @@ public class RealLocalizer implements EstimatorInterface {
 		
 		System.out.println("No reading percentage: " + ((double) noReadings/rounds )* 100 + " %");
 		System.out.println("hit precentage " + ((double) hit/rounds )* 100 + " %");
+	}
+	
+	private double getHeaderProbability(int x, int y, int h){
+		double summarizedProb = 0;
+		for(int i = 0; i < rows; i++){
+			for(int j = 0; j < cols; j++) {
+				for(int k = 0; k < 4; k++){
+					double headerStateValue = state[i][j][k];
+					summarizedProb += headerStateValue * getTProb(x, y, h, i, j, k);
+				}
+			}
+		}
+		return summarizedProb;
 	}
 	
 	private boolean isPossibleStep(int x, int y){
