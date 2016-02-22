@@ -15,6 +15,8 @@ public class RealLocalizer implements EstimatorInterface {
 	private double[][] sensorState;
 	private int rounds=0;
 	private int noReadings=0;
+	private int hit;
+	
 	public RealLocalizer( int rows, int cols, int head) {
 		this.rows = rows;
 		this.cols = cols;
@@ -130,9 +132,14 @@ public class RealLocalizer implements EstimatorInterface {
 	}
 
 	public int[] getCurrentReading() {
-		if(latestReading[0] == Integer.MAX_VALUE || latestReading[1] == Integer.MAX_VALUE){
+		if(isWall(latestReading[0],latestReading[1])){
 			return null;
 		}
+		
+//		if(latestReading[0] == Integer.MAX_VALUE || latestReading[1] == Integer.MAX_VALUE){
+//			return null;
+//		}
+		
 		return latestReading;
 	}
 
@@ -191,15 +198,17 @@ public class RealLocalizer implements EstimatorInterface {
 			}
 			latestReading[0] = realX + valueX;
 			latestReading[1] = realY + valueY;
+//		Sensor didnt report anything
 		}else{
 			latestReading[0] = Integer.MAX_VALUE;
 			latestReading[1] = Integer.MAX_VALUE;
+			return;
 		}
-		
-		if(isWall(latestReading[0], latestReading[1])){
-			latestReading[0] = Integer.MAX_VALUE;
-			latestReading[1] = Integer.MAX_VALUE;
-		}	
+//		Sensor repored something outside the walls
+//		if(isWall(latestReading[0], latestReading[1])){
+//			latestReading[0] = Integer.MAX_VALUE;
+//			latestReading[1] = Integer.MAX_VALUE;
+//		}	
 	}
 	
 	private void move(){
@@ -235,7 +244,7 @@ public class RealLocalizer implements EstimatorInterface {
 			noReadings++;
 			System.out.println("NoReading");
 			System.out.println("No reading percentage: " + ((double)noReadings/rounds)* 100 + " %");
-			return;
+//			return;
 		}		
 		
 		for(int i = 0; i < rows; i++){
@@ -271,7 +280,13 @@ public class RealLocalizer implements EstimatorInterface {
 				}
 			}
 		}
+		
+		if(currentMaxProbPos[0] == realX && currentMaxProbPos[1] == realY){
+			hit++;
+		}
+		
 		System.out.println("No reading percentage: " + ((double) noReadings/rounds )* 100 + " %");
+		System.out.println("hit precentage " + ((double) hit/rounds )* 100 + " %");
 	}
 	
 	private boolean isPossibleStep(int x, int y){

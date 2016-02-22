@@ -13,14 +13,19 @@ public class LocalizationDriver extends Thread {
 	}
 	
 	public void run() {
+		int c = 0;
 		while( !isInterrupted()) {
-			
+			if(c > 10000){
+				interrupt();
+			}
+			c++;
 			
 			try{
 				l.updateContinuously();
 				sleep( timer);
 			} catch( InterruptedException e) {
 				System.out.println( "oops");
+				return;
 			}
 
 		}

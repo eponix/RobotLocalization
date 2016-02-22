@@ -242,7 +242,7 @@ public class RobotLocalizationViewer {
 						
 				}
 				states[x][y][4].setBackground(Color.white);
-				states[y][y][4].setText( "");
+				states[x][y][4].setText( "");
 
 			}
 		}
