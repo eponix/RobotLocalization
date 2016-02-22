@@ -17,6 +17,7 @@ public class LocalizationDriver extends Thread {
 		while( !isInterrupted()) {
 			if(c > 10000){
 				interrupt();
+				break;
 			}
 			c++;
 			

@@ -15,6 +15,7 @@ public class RealLocalizer implements EstimatorInterface {
 	private int rounds=0;
 	private int noReadings=0;
 	private int hit;
+	private int sensorReportsTrueLocation;
 	
 	public RealLocalizer( int rows, int cols, int head) {
 		this.rows = rows;
@@ -265,7 +266,12 @@ public class RealLocalizer implements EstimatorInterface {
 					}
 					
 					for(int k = 0; k < 4; k++){
-						if(sum == 0 || sensorValue == 0){
+						if(sum == 0 && sensorValue == 0){								
+							state[i][j][k] = 0;
+						}else if(sum == 0){
+							state[i][j][k] += (sensorValue/4);
+							normalizingSum += state[i][j][k];
+						}else if(sensorValue == 0){
 							state[i][j][k] = 0;
 						}else{
 							state[i][j][k] += (sensorValue/sum)*headerValues[k];
@@ -295,10 +301,10 @@ public class RealLocalizer implements EstimatorInterface {
 				for(int k = 0; k < 4; k++){
 					headerSum += state[i][j][k];
 				}
-				System.out.println("headerSum: " + headerSum);
-				if(normalizingSum == 0){
-					System.out.println("normalizingSum is 0!!");
-				}
+//				System.out.println("headerSum: " + headerSum);
+//				if(normalizingSum == 0){
+//					System.out.println("normalizingSum is 0!!");
+//				}
 				showableGrid[i][j] = headerSum / normalizingSum;
 				if(showableGrid[i][j] > currentMaxProbPos[2]){
 					currentMaxProbPos[0] = i;
@@ -312,9 +318,13 @@ public class RealLocalizer implements EstimatorInterface {
 		if(currentMaxProbPos[0] == realX && currentMaxProbPos[1] == realY){
 			hit++;
 		}
+		if(latestReading[0] == realX && latestReading[1] == realY){
+			sensorReportsTrueLocation++;
+		}
 		
 		System.out.println("No reading percentage: " + ((double) noReadings/rounds )* 100 + " %");
 		System.out.println("hit precentage " + ((double) hit/rounds )* 100 + " %");
+		System.out.println("sensor reports correct location precentage " + ((double) sensorReportsTrueLocation/rounds )* 100 + " %");
 	}
 	
 	private double getHeaderProbability(int x, int y, int h){
