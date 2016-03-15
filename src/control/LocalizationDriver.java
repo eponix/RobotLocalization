@@ -13,13 +13,13 @@ public class LocalizationDriver extends Thread {
 	}
 	
 	public void run() {
-//		int c = 0;					// used for simulating 10000 steps and then stop
+		int c = 0;					// used for simulating 10000 steps and then stop
 		while( !isInterrupted()) {
-//			if(c > 10000){				
-//				interrupt();
-//				break;
-//			}
-//			c++;
+			if(c > 10000){				
+				interrupt();
+				break;
+			}
+			c++;
 			
 			try{
 				l.updateContinuously();

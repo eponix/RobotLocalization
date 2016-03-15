@@ -59,7 +59,7 @@ public class RealLocalizer implements EstimatorInterface {
 	//return the probability that the robot have/will move to square nX,nY with heading nH
 	//assuming it has the previous position x, y, h
 	public double getTProb( int x, int y, int h, int nX, int nY, int nH) {
-		
+				
 		// Is the next step further away then one step or diagonal
 		if(Math.abs(x-nX) > 1 || Math.abs(y-nY) > 1 || (x != nX && y != nY) || (x == nX && y == nY)){
 			return 0.0;
@@ -92,6 +92,7 @@ public class RealLocalizer implements EstimatorInterface {
 		}
 		
 		return (0.3/counter);
+
 	}
 
 	private boolean isWall(int nX, int nY){
@@ -230,14 +231,19 @@ public class RealLocalizer implements EstimatorInterface {
 			noReadings++;
 			System.out.println("NoReading");
 			System.out.println("No reading percentage: " + ((double)noReadings/rounds)* 100 + " %");
-			return;
+//			return;
 		}		
 		
 		for(int i = 0; i < rows; i++){
 			for(int j = 0; j < cols; j++){
-				if(!noReading){
+//				if(!noReading){
 //					For the current i,j, return the probability for the robot being there
-					double sensorValue = getOrXY(latestReading[0], latestReading[1], i, j);					
+					double sensorValue;
+					if (noReading)
+						sensorValue = getFakeOrXY(i, j);
+					else
+						sensorValue = getOrXY(latestReading[0], latestReading[1], i, j);
+//					double sensorValue = getOrXY(latestReading[0], latestReading[1], i, j);					
 					double[] headerValues = new double[4];
 					double sum = 0;
 					for(int k = 0; k < 4; k++){
@@ -260,7 +266,7 @@ public class RealLocalizer implements EstimatorInterface {
 					}
 				}
 			}
-		}		
+//		}		
 		// Insert values into the showGrid;
 		// Summarize the heading values from each square and insert into showGrid		
 		// Update currentMaxProbPos
@@ -281,7 +287,7 @@ public class RealLocalizer implements EstimatorInterface {
 			}
 		}
 		
-		if(latestReading[0] == realX && latestReading[1] == realY){
+		if(latestReading[0] == realX && latestReading[1] == realY){ // det var allt okeyt, då testar vi igen
 			sensorReportsTrueLocation++;
 		}
 		
@@ -327,6 +333,45 @@ public class RealLocalizer implements EstimatorInterface {
 		}else{
 			return 3;
 		}
+	}
+	
+	private double getFakeOrXY(int i, int j) {
+		int x = (int) currentMaxProbPos[0];
+		int y = (int) currentMaxProbPos[1];
+		int maxHeader = 0;
+		// Find most probable direction based from state
+		for(int k = 0; k < 4; k++){
+				double currHeader = state[x][y][k];
+				if (currHeader > state[x][y][maxHeader]){
+					maxHeader = k;
+				}
+		}
+		int fakeX = 0;
+		int fakeY = 0;
+		// Find the adjacent square from direction
+		do {
+			switch(maxHeader){
+			case 0: fakeX = x-1; // up
+					fakeY = y;
+					break;
+			case 1: fakeX = x; // right
+					fakeY = y+1;
+					break;
+			case 2: fakeX = x+1; // down
+					fakeY = y;
+					break;
+			case 3: fakeX = x;  // left
+					fakeY = y-1;
+					break;
+			}
+			if (maxHeader < 3){
+				maxHeader += maxHeader;
+			}
+			else
+				maxHeader = 0;
+		}
+		while(isWall(fakeX, fakeY));
+		return getOrXY(fakeX, fakeY, i, j);
 	}
 
 }
