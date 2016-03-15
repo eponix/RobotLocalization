@@ -1,8 +1,5 @@
 package control;
 
-import java.util.Random;
-
-import model.DummyLocalizer;
 import model.RealLocalizer;
 import view.RobotLocalizationViewer;
 
@@ -13,15 +10,6 @@ public class Main {
 	 */
 	
 	public static void main( String[] args) {
-		
-//		Random rand = new Random();
-//		
-//		for(int i =0; i < 10000; i++){
-//			double value = rand.nextDouble();
-//			System.out.println(value);
-//		}
-//		System.out.println("klar");
-//		return;
 		
 		/*
 		 * generate you own localiser / estimator wrapper here to plug it into the 
@@ -35,6 +23,6 @@ public class Main {
 		 * this thread controls the continuous update. If it is not started, 
 		 * you can only click through your localisation stepwise
 		 */
-		new LocalizationDriver( 1, viewer).start(); // prev value 500
+		new LocalizationDriver( 500, viewer).start();
 	}
 }	
